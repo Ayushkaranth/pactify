@@ -33,6 +33,7 @@ const GoalSchema = new mongoose.Schema({
   stakeTxHash: {
     type: String,
   },
+  forfeitAddress: { type: String },
 }, { timestamps: true }); // timestamps will add createdAt and updatedAt fields automatically
 
 // This prevents Mongoose from redefining the model every time the file is reloaded in development

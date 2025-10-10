@@ -1,67 +1,63 @@
-"use client";
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
 import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogOverlay, // Import the overlay
-} from "@/components/ui/dialog";
-import { CreateGoalForm } from "@/components/dashboard/CreateGoalForm";
+import { Button } from "@/components/ui/button";
+import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
+import { Goal } from "@/components/dashboard/GoalCard";
+import { CreateGoalDialog } from "@/components/dashboard/CreateGoalDialog";
+import { currentUser } from "@clerk/nextjs/server";
+import connectDB from "@/lib/db";
+import GoalModel from "@/models/Goal";
 
-export default function GoalsPage() {
-  const [open, setOpen] = useState(false);
+// Data fetching function remains correct
+async function getGoals() {
+  const user = await currentUser();
+  if (!user) return [];
+  try {
+    await connectDB();
+    const goals = await GoalModel.find({ userId: user.id }).sort({ createdAt: -1 });
+    return JSON.parse(JSON.stringify(goals));
+  } catch (error) {
+    console.error("Failed to fetch goals:", error);
+    return [];
+  }
+}
+
+export default async function GoalsPage() {
+  const initialGoals: Goal[] = await getGoals();
 
   return (
-    <div className="w-full h-screen text-white flex flex-col">
-      <header className="sticky top-0 z-30 w-full bg-slate-950/50 backdrop-blur-lg border-b border-slate-700">
+    // --- THIS IS THE KEY FIX ---
+    // We create a grid layout with two rows: one for the header (auto height)
+    // and one for the main content (1fr, which means "take up all remaining space").
+    <div className="w-full h-screen text-white grid grid-rows-[auto,1fr] overflow-hidden">
+      <header className="sticky top-0 z-30 w-full bg-slate-950/50 backdrop-blur-lg border-b border-slate-700 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div>
-              <h1 className="text-2xl font-bold">My Goals</h1>
-              <p className="text-sm text-neutral-400">Your personal accountability dashboard.</p>
+            <div className="flex items-center justify-between h-16">
+                <div>
+                    <h1 className="text-2xl font-bold">My Goals</h1>
+                    <p className="text-sm text-neutral-400">Drag cards to complete them.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <Link href="/dashboard"><Button variant="ghost">Back to Navigator</Button></Link>
+                    <CreateGoalDialog />
+                </div>
             </div>
-            <div className="flex items-center gap-4">
-               <Link href="/dashboard">
-                <Button variant="ghost">Back to Navigator</Button>
-               </Link>
-               <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                    <Button className="bg-orange-500 hover:bg-orange-600">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create New Goal
-                    </Button>
-                </DialogTrigger>
-                {/* The Overlay provides the blur effect */}
-                <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
-                <DialogContent className="bg-slate-900/80 border-slate-700 text-white max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl">Commit to a New Goal</DialogTitle>
-                        <DialogDescription>
-                            Follow the steps below to define your objective and raise the stakes.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <CreateGoalForm setOpen={setOpen} />
-                </DialogContent>
-               </Dialog>
-            </div>
-          </div>
         </div>
       </header>
 
-      <main className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-            <div className="border-2 border-dashed border-slate-700 rounded-lg p-24 text-center">
-                <p className="text-neutral-500">
-                    Your staked and active goals will appear here.
+      {/* This main area now has a defined, flexible height and handles its own overflow */}
+      <main className="p-4 sm:p-6 lg:px-8 overflow-y-hidden overflow-x-auto">
+          {initialGoals.length > 0 ? (
+            <KanbanBoard initialGoals={initialGoals} />
+          ) : (
+            <div className="w-full h-full border-2 border-dashed border-slate-700 rounded-lg p-24 flex items-center justify-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-2">No Goals Yet</h3>
+                <p className="text-neutral-500 max-w-md mx-auto">
+                  Your journey begins here. Click "Create New Goal" to define your first objective.
                 </p>
+              </div>
             </div>
-        </div>
+          )}
       </main>
     </div>
   );

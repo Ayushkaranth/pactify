@@ -6,16 +6,18 @@ import { revalidatePath } from "next/cache";
 import connectDB from "@/lib/db";
 import Goal from "@/models/Goal";
 
-// This schema now matches the object we'll pass directly
 const CreateGoalSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters.").max(100),
   description: z.string().max(500).optional(),
   deadline: z.date().optional(),
+  stakeAmount: z.coerce.number().min(0).optional(),
+   forfeitAddress: z.string().optional(),
 });
 
-// The function now accepts a plain object, not FormData
 export async function createGoalAction(values: z.infer<typeof CreateGoalSchema>) {
-  const { userId } = auth();
+  // ✅ FIX: await the auth() call
+  const { userId } = await auth();
+
   if (!userId) {
     return { success: false, error: "You must be logged in to create a goal." };
   }
@@ -35,7 +37,7 @@ export async function createGoalAction(values: z.infer<typeof CreateGoalSchema>)
 
     const newGoal = new Goal({
       ...validatedFields.data,
-      userId: userId,
+      userId,
     });
 
     await newGoal.save();
@@ -45,5 +47,58 @@ export async function createGoalAction(values: z.infer<typeof CreateGoalSchema>)
   } catch (error) {
     console.error("Error creating goal:", error);
     return { success: false, error: "Failed to create goal on the server." };
+  }
+}
+
+export async function updateGoalStatus(goalId: string, status: 'active' | 'completed' | 'failed') {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Authentication failed." };
+  }
+
+  try {
+    await connectDB();
+    const goal = await Goal.findOne({ _id: goalId, userId });
+
+    if (!goal) {
+      return { success: false, error: "Goal not found or you do not have permission to edit it." };
+    }
+
+    goal.status = status;
+    await goal.save();
+
+    revalidatePath("/dashboard/goals");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating goal status:", error);
+    return { success: false, error: "Failed to update goal status." };
+  }
+}
+
+export async function addStakeToGoal(goalId: string, txHash: string) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Authentication failed." };
+  }
+
+  try {
+    await connectDB();
+    const goal = await Goal.findOne({ _id: goalId, userId });
+
+    if (!goal) {
+      return { success: false, error: "Goal not found." };
+    }
+    if (!goal.stakeAmount || goal.stakeAmount <= 0) {
+        return { success: false, error: "This goal has no stake amount defined."}
+    }
+
+    goal.stakeTxHash = txHash;
+    await goal.save();
+
+    revalidatePath("/dashboard/goals");
+    return { success: true, message: "Stake confirmed and linked to goal!" };
+  } catch (error) {
+    console.error("Error adding stake to goal:", error);
+    return { success: false, error: "Failed to update goal with stake information." };
   }
 }

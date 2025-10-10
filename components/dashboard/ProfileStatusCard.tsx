@@ -4,6 +4,8 @@ import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Button } from "../ui/button";
 import { ExternalLink, Zap } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
+import { ConnectWalletButton } from "./ConnectWalletButton"; // Import the new wallet button
 
 export function ProfileStatusCard() {
   const { user } = useUser();
@@ -67,6 +69,14 @@ export function ProfileStatusCard() {
           <Button variant="ghost" className="text-neutral-300 hover:text-white hover:bg-slate-800">
               Public Profile <ExternalLink className="ml-2 h-4 w-4" />
           </Button>
+
+          {/* --- THIS IS THE NEWLY ADDED SECTION --- */}
+          <div className="flex items-center gap-4 ml-4">
+            <ConnectWalletButton />
+            <UserButton afterSignOutUrl="/" />
+          </div>
+          {/* --- END OF NEW SECTION --- */}
+          
         </div>
       </div>
     </motion.div>

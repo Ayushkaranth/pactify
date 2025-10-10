@@ -112,6 +112,28 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* For Webkit-based browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px; /* Make the scrollbar thinner */
+  height: 8px;
+}
+
+/* The "track" or background of the scrollbar */
+::-webkit-scrollbar-track {
+  background: transparent; /* Make the track invisible */
+}
+
+/* The draggable "thumb" or handle of the scrollbar */
+::-webkit-scrollbar-thumb {
+  background: #475569; /* A dark slate color */
+  border-radius: 10px;
+}
+
+/* The thumb when you hover over it */
+::-webkit-scrollbar-thumb:hover {
+  background: #f97316; /* Our brand's orange color */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
