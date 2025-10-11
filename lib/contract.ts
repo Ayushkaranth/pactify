@@ -1,5 +1,5 @@
 import { getAddress, Abi } from 'viem';
-import GoalStakeAbi from '../blockchain/artifacts/contracts/GoalStake.sol/GoalStake.json';
+import { GoalStakeAbi } from '@/lib/abi/GoalStakeAbi';
 
 const rawContractAddress = process.env.NEXT_PUBLIC_GOAL_STAKE_CONTRACT_ADDRESS;
 
@@ -8,4 +8,4 @@ if (!rawContractAddress) {
 }
 
 export const GOAL_STAKE_CONTRACT_ADDRESS = getAddress(rawContractAddress);
-export const GOAL_STAKE_ABI = GoalStakeAbi.abi as Abi;
+export const GOAL_STAKE_ABI = GoalStakeAbi;
