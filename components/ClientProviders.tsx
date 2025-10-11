@@ -1,8 +1,13 @@
 "use client";
 
-import React from "react";
-import { Web3Provider } from "@/providers/Web3Provider";
+import React, { ReactNode } from "react";
+import { Web3Provider } from "./Web3Provider";
+import { ClerkProvider } from "@clerk/nextjs";
 
-export function ClientProviders({ children }: { children: React.ReactNode }) {
-  return <Web3Provider>{children}</Web3Provider>;
+export function ClientProviders({ children }: { children: ReactNode }) {
+  return (
+    <Web3Provider>
+      <ClerkProvider>{children}</ClerkProvider>
+    </Web3Provider>
+  );
 }
