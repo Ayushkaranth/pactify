@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
     // ✅ Ignore lint errors in production build
     ignoreDuringBuilds: true,
   },
+  reactStrictMode: false,
+
+  // ✅ Helps prevent SSR context/useContext issues
+  experimental: {
+    optimizeCss: true,
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+
+  // ✅ Keeps your build server-friendly
+  output: 'standalone',
 };
 
-export default nextConfig;
+module.exports = nextConfig;
