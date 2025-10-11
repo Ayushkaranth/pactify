@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Define public (non-auth) routes
+// This part is correct: define which routes are public
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
@@ -8,17 +8,18 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  // If the route is not public, require authentication
+  // This part is also correct: protect routes that are not public
   if (!isPublicRoute(req)) {
-    auth.protect(); // ✅ correct syntax for Clerk v5+
+    auth.protect();
   }
 });
 
 export const config = {
+  // --- THIS IS THE DEFINITIVE FIX ---
+  // This is a more robust matcher. It tells the middleware to run on EVERYTHING...
   matcher: [
-    // Protect everything except _next/static files and assets
-    "/((?!_next|.*\\..*).*)",
-    "/", 
-    "/dashboard(.*)", // ✅ ensures /dashboard/goals and other dashboard pages are protected
+    "/((?!.+\\.[\\w]+$|_next).*)", // ...except for static files (like images, css) and internal Next.js files.
+    "/",
+    "/(api|trpc)(.*)", // This explicitly includes API routes, which is crucial.
   ],
 };
