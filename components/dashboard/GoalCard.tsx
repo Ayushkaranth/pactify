@@ -1,23 +1,24 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, Zap, GripVertical, X, AlertTriangle } from "lucide-react";
+import { Clock, Zap, GripVertical, X, AlertTriangle, CheckCircle } from "lucide-react"; // Added CheckCircle
 import { cn } from "@/lib/utils";
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { updateGoalStatus } from "@/app/dashboard/goals/actions";
+import { updateGoalStatus } from "@/app/dashboard/goals/actions"; // 
 import { Button } from "../ui/button";
 import { StakeGoalDialog } from "./StakeGoalDialog";
 
 export type Goal = {
   _id: string; title: string; description?: string; deadline?: Date;
-  status: 'active' | 'completed' | 'failed'; stakeAmount?: number; stakeTxHash?: string;
+  status: 'active' | 'completed' | 'failed'; stakeAmount?: number; stakeTxHash?: string; goalId?: number;
 };
 
-export function GoalCard({ goal, isOverlay }: { goal: Goal; isOverlay?: boolean }) {
+export function GoalCard({ goal: initialGoal, isOverlay }: { goal: Goal; isOverlay?: boolean }) {
+  const [goal, setGoal] = useState(initialGoal);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: goal._id });
   const [isPending, startTransition] = useTransition();
 
@@ -34,6 +35,14 @@ export function GoalCard({ goal, isOverlay }: { goal: Goal; isOverlay?: boolean 
   const handleFail = () => {
     startTransition(async () => {
       await updateGoalStatus(goal._id, 'failed');
+      // No need for a client-side state update here.
+      // The `updateGoalStatus` server action handles revalidation.
+    });
+  };
+
+  const handleComplete = () => {
+    startTransition(async () => {
+      await updateGoalStatus(goal._id, 'completed');
     });
   };
 
@@ -48,41 +57,58 @@ export function GoalCard({ goal, isOverlay }: { goal: Goal; isOverlay?: boolean 
         {goal.description && <p className="text-sm text-neutral-400 mb-4 line-clamp-2">{goal.description}</p>}
         
         {goal.status === 'active' && isStaked && !isTxConfirmed && (
-            <StakeGoalDialog goal={goal} />
+          <StakeGoalDialog goal={goal} setGoal={setGoal} />
         )}
 
         <div className="mt-auto pt-4 border-t border-slate-700/50 flex justify-between items-center text-xs text-neutral-400">
           {goal.deadline ? <div className="flex items-center"><Clock className="h-4 w-4 mr-1.5" /><span>{formatDistanceToNow(new Date(goal.deadline), { addSuffix: true })}</span></div> : <div />}
           {isStaked && (
-              <div className={cn("flex items-center font-semibold px-2 py-1 rounded", isTxConfirmed ? "text-green-400 bg-green-900/30" : "text-purple-400 bg-purple-900/30")}>
-                  <Zap className="h-4 w-4 mr-1.5" /> 
-                  {isTxConfirmed ? "STAKED" : `${goal.stakeAmount} MATIC`}
-              </div>
+            <div className={cn("flex items-center font-semibold px-2 py-1 rounded", isTxConfirmed ? "text-green-400 bg-green-900/30" : "text-purple-400 bg-purple-900/30")}>
+              <Zap className="h-4 w-4 mr-1.5" /> 
+              {isTxConfirmed ? "STAKED" : `${goal.stakeAmount} ETH`}
+            </div>
           )}
         </div>
-
+        
         {goal.status === 'active' && (
-            <div className="mt-4 pt-4 border-t border-slate-700/50 flex justify-end">
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="bg-red-900/50 border-red-700 text-red-300 hover:bg-red-900 hover:text-red-200">
-                            <X className="mr-1.5 h-4 w-4" /> Fail
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-slate-900 border-slate-700 text-white">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center"><AlertTriangle className="text-yellow-400 mr-2" />Confirm Failure</AlertDialogTitle>
-                            <AlertDialogDescription className="text-neutral-400">
-                                This will permanently mark the goal as failed. If staked, this would trigger a forfeit. This action cannot be undone.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleFail} className="bg-red-600 hover:bg-red-700">Confirm Failure</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
+          <div className="mt-4 pt-4 border-t border-slate-700/50 flex justify-end gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-green-900/50 border-green-700 text-green-300 hover:bg-green-900 hover:text-green-200">
+                    <CheckCircle className="mr-1.5 h-4 w-4" /> Complete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-slate-900 border-slate-700 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center"><CheckCircle className="text-green-400 mr-2" />Confirm Completion</AlertDialogTitle>
+                  <AlertDialogDescription className="text-neutral-400">This will mark the goal as completed. If staked, the funds will be returned to your wallet. This action cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleComplete} className="bg-green-600 hover:bg-green-700">Confirm Completion</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="bg-red-900/50 border-red-700 text-red-300 hover:bg-red-900 hover:text-red-200">
+                  <X className="mr-1.5 h-4 w-4" /> Fail
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-slate-900 border-slate-700 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center"><AlertTriangle className="text-yellow-400 mr-2" />Confirm Failure</AlertDialogTitle>
+                  <AlertDialogDescription className="text-neutral-400">
+                    This will permanently mark the goal as failed. If staked, this would trigger a forfeit. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleFail} className="bg-red-600 hover:bg-red-700">Confirm Failure</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </div>
     </div>
