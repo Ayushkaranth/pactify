@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ShootingStarBackground } from "@/components/background-animation";
-import { ClientProviders } from "./ClientProviders"; // new client wrapper
+import { ClientProviders } from "./ClientProviders"; // Client wrapper
 
 const inter = Inter({ subsets: ["latin"] });
 
