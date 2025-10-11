@@ -1,21 +1,37 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+"use client";
+
+import React from "react";
+// ❌ Remove this import
+// import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClientLayoutWrapper } from "./ClientLayoutWrapper";
+import { ClerkProvider } from "@clerk/nextjs";
+import { Web3Provider } from "@/providers/Web3Provider";
+import { ShootingStarBackground } from "@/components/background-animation";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Pactify",
-  description: "Verifiable Commitments",
-};
+// ❌ Remove this export as it is now in app/metadata.ts
+// export const metadata: Metadata = {
+//   title: "Pactify",
+//   description: "Verifiable Commitments",
+// };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-950`}>
-        <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+        <ClerkProvider>
+          <Web3Provider>
+            <ShootingStarBackground />
+            {children}
+          </Web3Provider>
+        </ClerkProvider>
       </body>
     </html>
   );
