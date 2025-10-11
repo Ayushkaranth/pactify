@@ -77,26 +77,18 @@ export async function updateGoalStatus(goalId: string, status: 'active' | 'compl
 
 export async function addStakeToGoal(goalId: string, txHash: string) {
   const { userId } = await auth();
-  if (!userId) {
-    return { success: false, error: "Authentication failed." };
-  }
+  if (!userId) { return { success: false, error: "Authentication failed." }; }
 
   try {
     await connectDB();
     const goal = await Goal.findOne({ _id: goalId, userId });
-
-    if (!goal) {
-      return { success: false, error: "Goal not found." };
-    }
-    if (!goal.stakeAmount || goal.stakeAmount <= 0) {
-        return { success: false, error: "This goal has no stake amount defined."}
-    }
+    if (!goal) { return { success: false, error: "Goal not found." }; }
 
     goal.stakeTxHash = txHash;
     await goal.save();
 
     revalidatePath("/dashboard/goals");
-    return { success: true, message: "Stake confirmed and linked to goal!" };
+    return { success: true };
   } catch (error) {
     console.error("Error adding stake to goal:", error);
     return { success: false, error: "Failed to update goal with stake information." };

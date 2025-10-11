@@ -2,17 +2,15 @@
 
 import React, { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { polygonMumbai } from 'wagmi/chains'; // We are switching back to a public testnet
+import { sepolia } from 'wagmi/chains'; // Import the correct Sepolia chain
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected } from 'wagmi/connectors';
 
 const config = createConfig({
-  chains: [polygonMumbai], // Use the Polygon Mumbai testnet
-  connectors: [
-    injected(), // For MetaMask and other browser wallets
-  ],
+  chains: [sepolia], // Use the Sepolia testnet
+  connectors: [injected()],
   transports: {
-    [polygonMumbai.id]: http(),
+    [sepolia.id]: http(), // Configure transport for Sepolia
   },
 });
 
