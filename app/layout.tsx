@@ -1,28 +1,28 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css"; // CSS import stays
-import { ShootingStarBackground } from "@/components/background-animation";
+// app/layout.tsx
+import { usePathname } from "next/navigation"; // client-safe hook
 import { ClientProviders } from "../components/ClientProviders";
+import { ShootingStarBackground } from "../components/background-animation";
 
-const inter = Inter({ subsets: ["latin"] });
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
 
-export const metadata: Metadata = {
-  title: "Pactify",
-  description: "Verifiable Commitments",
-};
+  // Skip ClientProviders for error pages
+  const isErrorPage = pathname.startsWith("/404") || pathname.startsWith("/500");
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-slate-950`}>
-        <ClientProviders>
-          <ShootingStarBackground />
-          {children}
-        </ClientProviders>
+      <body className="bg-slate-950">
+        {isErrorPage ? (
+          <>
+            <ShootingStarBackground />
+            {children}
+          </>
+        ) : (
+          <ClientProviders>
+            <ShootingStarBackground />
+            {children}
+          </ClientProviders>
+        )}
       </body>
     </html>
   );
