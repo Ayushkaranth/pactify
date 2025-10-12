@@ -2,21 +2,44 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Target, Users, MessageSquare, Check } from "lucide-react";
+// Changed Target to BookOpen for the new theme
+import { Users, MessageSquare, Check, BookOpen } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 
 const features = [
-  { id: "goals", title: "Goals", description: "The personal accountability module. Define your objectives, commit to them with real stakes, and build a verifiable history of your ambition and discipline.", icon: <Target className="h-8 w-8 text-orange-400" />, color: "rgba(251, 146, 60, 0.3)", borderColor: "rgb(251 146 60)", keyActions: ["Create new personal goals with deadlines.","Stake crypto to hold yourself accountable.","Track your completion history and success rate."] },
-  { id: "pacts", title: "Pacts", description: "The peer-to-peer commitment module. Forge on-chain agreements for projects or track financial IOUs with a permanent, indisputable record.", icon: <Users className="h-8 w-8 text-blue-400" />, color: "rgba(96, 165, 250, 0.3)", borderColor: "rgb(96 165 250)", keyActions: ["Create task-based pacts for group projects.","Log and manage financial IOUs with friends.","Verify completions with on-chain proof."] },
-  { id: "reach", title: "Reach", description: "The professional networking module. Conduct spam-free outreach using a bonded messaging system that proves you respect the recipient's time.", icon: <MessageSquare className="h-8 w-8 text-green-400" />, color: "rgba(52, 211, 153, 0.3)", borderColor: "rgb(52 211 153)", keyActions: ["Send bonded messages to new contacts.","Manage your professional conversations.","Build a trusted, high-signal network."] },
+  {
+    id: "goals", // The URL path remains /goals for simplicity
+    title: "P.o.W. Journal", // New Title
+    description: "Document your personal projects and learning journey. Create a verifiable, on-chain history of your work and discipline.", // New Description
+    icon: <BookOpen className="h-8 w-8 text-orange-400" />, // New Icon
+    color: "rgba(251, 146, 60, 0.3)",
+    borderColor: "rgb(251 146 60)",
+    keyActions: [
+        "Create journal entries for projects or learning goals.",
+        "Stake crypto to create a permanent, on-chain timestamp.",
+        "Build a public timeline of your work ethic.",
+    ]
+  },
+  {
+    id: "pacts",
+    title: "Pacts",
+    description: "The peer-to-peer commitment module. Forge on-chain agreements for projects or track financial IOUs with a permanent, indisputable record.",
+    icon: <Users className="h-8 w-8 text-blue-400" />,
+    color: "rgba(96, 165, 250, 0.3)",
+    borderColor: "rgb(96 165 250)",
+    keyActions: [ "Create task-based pacts for group projects.", "Log and manage financial IOUs with friends.", "Verify completions with on-chain proof." ]
+  },
+  {
+    id: "reach",
+    title: "Talent Hub",
+    description: "The professional marketplace. Browse talented freelancers with verifiable on-chain histories and propose paid projects directly.",
+    icon: <MessageSquare className="h-8 w-8 text-green-400" />,
+    color: "rgba(52, 211, 153, 0.3)",
+    borderColor: "rgb(52 211 153)",
+    keyActions: [ "Discover talent based on their Reliability Score.", "Review a freelancer's full Proof-of-Work history.", "Propose secure, smart-contract-escrowed pacts." ]
+  },
 ];
 
 type Feature = (typeof features)[0];

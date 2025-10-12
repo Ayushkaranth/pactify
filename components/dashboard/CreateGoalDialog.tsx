@@ -1,4 +1,4 @@
-"use client"; // This is the most important line
+"use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,15 @@ export function CreateGoalDialog() {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button className="bg-orange-500 hover:bg-orange-600">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Goal
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Journal Entry
                 </Button>
             </DialogTrigger>
             <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
             <DialogContent className="bg-slate-900/80 border-slate-700 text-white max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl">Commit to a New Goal</DialogTitle>
+                    <DialogTitle className="text-2xl">Create a New Journal Entry</DialogTitle>
                     <DialogDescription>
-                        Follow the steps below to define your objective and raise the stakes.
+                        Document a project or learning goal to create a permanent, on-chain proof of your work.
                     </DialogDescription>
                 </DialogHeader>
                 <CreateGoalForm setOpen={setOpen} />

@@ -159,3 +159,57 @@ export async function requestRevisionOffChain(pactId: string) {
     return { success: false, error: "Database update failed." };
   }
 }
+
+export async function rejectPactAction(pactId: string) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Authentication failed." };
+  }
+
+  try {
+    await connectDB();
+    // Find the pact where the current user is the partner and it's still pending
+    const pact = await Pact.findOne({ _id: pactId, partnerId: userId, status: 'pending' });
+
+    if (!pact) {
+      return { success: false, error: "Pending pact not found or you are not the partner." };
+    }
+
+    pact.status = 'rejected';
+    await pact.save();
+
+    // Refresh the pacts page to show the change
+    revalidatePath("/dashboard/pacts");
+    return { success: true, message: "Pact successfully rejected." };
+  } catch (error) {
+    console.error("Error rejecting pact:", error);
+    return { success: false, error: "Failed to update pact in the database." };
+  }
+}
+
+export async function dismissRejectedPactAction(pactId: string) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Authentication failed." };
+  }
+
+  try {
+    await connectDB();
+    // Find the pact where the current user is the creator and it's been rejected
+    const pact = await Pact.findOne({ _id: pactId, creatorId: userId, status: 'rejected' });
+
+    if (!pact) {
+      return { success: false, error: "Rejected pact not found or you are not the creator." };
+    }
+
+    // Update the status to prevent the notification from showing again
+    pact.status = 'rejected_seen';
+    await pact.save();
+
+    revalidatePath("/dashboard/pacts");
+    return { success: true };
+  } catch (error) {
+    console.error("Error dismissing rejected pact:", error);
+    return { success: false, error: "Failed to update pact in the database." };
+  }
+}

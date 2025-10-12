@@ -10,7 +10,7 @@ const PactSchema = new mongoose.Schema({
   status: { 
     type: String, 
     required: true, 
-    enum: ['pending', 'active', 'pending_confirmation', 'completed', 'failed', 'rejected'], 
+    enum: ['pending', 'active', 'pending_confirmation', 'completed', 'failed', 'rejected','rejected_seen'], 
     default: 'pending' 
   },
   

@@ -7,7 +7,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import connectDB from "@/lib/db";
 import GoalModel from "@/models/Goal";
 
-// Data fetching function remains correct
 async function getGoals() {
   const user = await currentUser();
   if (!user) return [];
@@ -25,16 +24,13 @@ export default async function GoalsPage() {
   const initialGoals: Goal[] = await getGoals();
 
   return (
-    // --- THIS IS THE KEY FIX ---
-    // We create a grid layout with two rows: one for the header (auto height)
-    // and one for the main content (1fr, which means "take up all remaining space").
     <div className="w-full h-screen text-white grid grid-rows-[auto,1fr] overflow-hidden">
       <header className="sticky top-0 z-30 w-full bg-slate-950/50 backdrop-blur-lg border-b border-slate-700 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
                 <div>
-                    <h1 className="text-2xl font-bold">My Goals</h1>
-                    <p className="text-sm text-neutral-400">Drag cards to complete them.</p>
+                    <h1 className="text-2xl font-bold">Proof-of-Work Journal</h1>
+                    <p className="text-sm text-neutral-400">Your on-chain history of discipline and achievement.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard"><Button variant="ghost">Back to Navigator</Button></Link>
@@ -44,16 +40,15 @@ export default async function GoalsPage() {
         </div>
       </header>
 
-      {/* This main area now has a defined, flexible height and handles its own overflow */}
       <main className="p-4 sm:p-6 lg:px-8 overflow-y-hidden overflow-x-auto">
           {initialGoals.length > 0 ? (
             <KanbanBoard initialGoals={initialGoals} />
           ) : (
             <div className="w-full h-full border-2 border-dashed border-slate-700 rounded-lg p-24 flex items-center justify-center">
               <div>
-                <h3 className="text-xl font-semibold mb-2">No Goals Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No Journal Entries Yet</h3>
                 <p className="text-neutral-500 max-w-md mx-auto">
-                  Your journey begins here. Click "Create New Goal" to define your first objective.
+                  Click "New Journal Entry" to document your first project or learning goal and start building your on-chain reputation.
                 </p>
               </div>
             </div>

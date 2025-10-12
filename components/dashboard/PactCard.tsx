@@ -1,221 +1,122 @@
 "use client";
 
 import { useTransition, useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, stringToBytes, bytesToHex } from "viem";
 import { pactsContractAddress, pactsContractAbi } from "@/lib/pacts-contract";
-import {
-  acceptPactOffChain,
-  updatePactCompletionStatus,
-  confirmCompletionOffChain,
-  requestRevisionOffChain
-} from "@/app/dashboard/pacts/actions";
+import { acceptPactOffChain, rejectPactAction } from "@/app/dashboard/pacts/actions";
 import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
-import { Loader2, Zap, FileText, Check, Send, ThumbsUp, ThumbsDown, X, RefreshCw, MessageSquare, Eye } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ChatBox } from "./ChatBox";
-import { FileSubmissionForm } from "./FileSubmissionForm";
-import { downloadSubmittedWork } from "@/app/dashboard/pacts/actions/download-file-action";
+import { Button } from "@/components/ui/button";
+import { Loader2, Zap, FileText, Check, X, AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export type Pact = {
-  _id: string;
-  creatorId: string;
-  partnerId: string;
-  title: string;
-  description?: string;
-  status: 'pending' | 'active' | 'pending_confirmation' | 'completed' | 'failed' | 'rejected';
-  stakeAmount?: number;
-  rejectionCount: number;
-  submission?: {
-      filePath: string;
-      fileName: string;
-      submittedAt: Date;
-      viewedBy?: string;
-  };
+  _id: string; creatorId: string; partnerId: string; title: string; description?: string; type: 'task' | 'financial';
+  status: 'pending' | 'active' | 'completed' | 'failed' | 'rejected'; stakeAmount?: number;
 };
 
 export function PactCard({ pact }: { pact: Pact }) {
   const { user } = useUser();
+  
+  // All dnd-kit related hooks have been COMPLETELY REMOVED.
+  
+  const { data: txHash, writeContract, isPending: isWriting, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, error: confirmError } = useWaitForTransactionReceipt({ hash: txHash });
   const [isDbPending, startDbTransition] = useTransition();
   const [localError, setLocalError] = useState<string | null>(null);
-  
-  const { data: txHash, writeContract, isPending, error, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess, error: confirmError } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const [lastOnChainAction, setLastOnChainAction] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const isPartner = user?.id === pact.partnerId;
+  const isPendingInvitation = isPartner && pact.status === 'pending';
 
-  const isUserCreator = user?.id === pact.creatorId;
-  const isUserPartner = user?.id === pact.partnerId;
-
-  const handleOnChainAction = (functionName: string, args: any[] = [], value: bigint = 0n) => {
+  const handleAcceptPact = () => {
     setLocalError(null);
-    setLastOnChainAction(functionName);
+    const pactIdBytes32 = bytesToHex(stringToBytes(pact._id.padEnd(32, '\0')));
+
     writeContract({
       address: pactsContractAddress,
       abi: pactsContractAbi,
-      functionName,
-      args,
-      value
+      functionName: 'acceptPact',
+      args: [pactIdBytes32],
+      value: pact.stakeAmount ? parseEther(pact.stakeAmount.toString()) : parseEther("0"),
     });
-  }
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-        const response = await fetch(`/api/download/${pact._id}`);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText);
-        }
-        
-        const blob = await response.blob();
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = pact.submission?.fileName || 'submission';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        alert("File downloaded successfully. This counts as the single view.");
-        
-    } catch (err) {
-        setLocalError(err.message || "Failed to download file.");
-    } finally {
-        setIsDownloading(false);
-    }
   };
   
+  const handleRejectPact = () => {
+    startDbTransition(async () => {
+        const result = await rejectPactAction(pact._id);
+        if(!result.success){
+            setLocalError(result.error || "Failed to reject pact.");
+        }
+    });
+  };
+
   useEffect(() => {
-    if (isSuccess && lastOnChainAction) {
+    if (isConfirmed && txHash) {
       startDbTransition(async () => {
-        let result;
-        if (lastOnChainAction === 'acceptPact') {
-          result = await acceptPactOffChain(pact._id, txHash!);
-        } else if (lastOnChainAction === 'signalCompletion') {
-          result = await updatePactCompletionStatus(pact._id);
-        } else if (lastOnChainAction === 'confirmCompletion') {
-          result = await confirmCompletionOffChain(pact._id);
-        } else if (lastOnChainAction === 'requestRevision') {
-          result = await requestRevisionOffChain(pact._id);
-        }
-        
-        if (result && !result.success) {
-          setLocalError(result.error || "Database update failed.");
-        } else {
-          setLastOnChainAction(null);
-          reset();
-        }
+        const result = await acceptPactOffChain(pact._id, txHash);
+        if (!result.success) { setLocalError(result.error || "Failed to update pact in database."); }
       });
     }
-  }, [isSuccess, lastOnChainAction, pact._id, txHash, reset]);
-  
-  useEffect(() => {
-    const txError = error || confirmError;
-    if (txError) setLocalError(txError.shortMessage || "An error occurred.");
-  }, [error, confirmError]);
-  
-  const isLoading = isPending || isConfirming || isDbPending;
+  }, [isConfirmed, txHash, pact._id]);
 
+  useEffect(() => {
+    if (writeError) setLocalError(writeError.shortMessage || "An error occurred.");
+    else if (confirmError) setLocalError("Transaction confirmation failed.");
+  }, [writeError, confirmError]);
+  
+  const isLoading = isWriting || isConfirming || isDbPending;
+  const isStaked = pact.stakeAmount && pact.stakeAmount > 0;
   const statusColors = {
     pending: "border-l-blue-400", active: "border-l-orange-400",
-    pending_confirmation: "border-l-yellow-400",
-    completed: "border-l-green-400", failed: "border-l-red-400", rejected: "border-l-gray-500",
+    completed: "border-l-green-400", failed: "border-l-red-400",
+    rejected: "border-l-gray-500",
   };
 
   return (
-    <div className={cn("bg-slate-800/50 rounded-lg border border-slate-700 border-l-4 relative group", statusColors[pact.status])}>
-      <div className="p-4">
-        {/* Header and Description */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-3">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={cn("bg-slate-800/50 rounded-lg p-4 border border-slate-700 border-l-4 relative group", statusColors[pact.status])}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
             <div className="flex-shrink-0 bg-slate-800 h-12 w-12 flex items-center justify-center rounded-lg"><FileText className="h-6 w-6 text-blue-400" /></div>
             <div>
-              <h3 className="text-xl font-bold text-white">{pact.title}</h3>
-              <p className="text-xs text-neutral-400 capitalize">{`Status: ${pact.status.replace('_', ' ')}`}</p>
+                <h3 className="text-xl font-bold text-white">{pact.title}</h3>
+                <p className="text-xs text-neutral-400 capitalize">{pact.status.replace('_', ' ')}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-              {pact.stakeAmount && pact.stakeAmount > 0 && (<div className="flex items-center font-semibold text-purple-400 text-sm"><Zap className="h-4 w-4 mr-1.5" /> {pact.stakeAmount} ETH Stake</div>)}
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400 hover:bg-slate-700">
-                    <MessageSquare size={18} />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-slate-900/80 border-slate-700 text-white max-w-xl h-[80vh] flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Chat for: {pact.title}</DialogTitle>
-                  </DialogHeader>
-                  <ChatBox pactId={pact._id} />
-                </DialogContent>
-              </Dialog>
-          </div>
         </div>
-        {pact.description && <p className="text-neutral-300 mb-4">{pact.description}</p>}
-
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          
-          {/* Partner's Button to Accept Invitation (ON-CHAIN) */}
-          {pact.status === 'pending' && isUserPartner && (
-            <Button className="w-full bg-blue-500 hover:bg-blue-600" disabled={isLoading} onClick={() => handleOnChainAction('acceptPact', [bytesToHex(stringToBytes(pact._id.padEnd(32, '\0')))], parseEther(pact.stakeAmount?.toString() || "0"))}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              {isPending ? "Confirm..." : isConfirming ? "Accepting..." : isDbPending ? "Finalizing..." : "Accept & Match Stake"}
-            </Button>
-          )}
-          
-          {/* Partner's File Submission Form (NEW) */}
-          {pact.status === 'active' && isUserPartner && (
-            <FileSubmissionForm pactId={pact._id} />
-          )}
-
-          {/* Creator's UI to View or Handle Submission (NEW) */}
-          {pact.status === 'pending_confirmation' && isUserCreator && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                {pact.submission && !pact.submission.viewedBy ? (
-                    <>
-                    <p className="text-sm text-yellow-300 mb-2 sm:mb-0">The partner has submitted their work for your approval.</p>
-                    <Button onClick={handleDownload} disabled={isDownloading} className="w-full sm:w-auto bg-slate-500 hover:bg-slate-600">
-                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
-                        View Submission
-                    </Button>
-                    </>
-                ) : pact.submission && pact.submission.viewedBy ? (
-                    <p className="text-sm text-neutral-400">Submission viewed. Please approve or reject.</p>
-                ) : null}
-              <div className="flex w-full sm:w-auto items-center gap-3 mt-2 sm:mt-0">
-                <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 flex-grow" onClick={() => handleOnChainAction('confirmCompletion', [bytesToHex(stringToBytes(pact._id.padEnd(32, '\0')))])}>
-                  {isLoading && lastOnChainAction === 'confirmCompletion' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
-                  Approve
-                </Button>
-                <Button 
-                    variant="destructive" 
-                    onClick={() => handleOnChainAction('requestRevision', [bytesToHex(stringToBytes(pact._id.padEnd(32, '\0')))])}
-                    className="w-full sm:w-auto flex-grow"
-                >
-                  {isLoading && lastOnChainAction === 'requestRevision' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  Reject ({pact.rejectionCount} / 3)
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Status Text for waiting states */}
-          {pact.status === 'active' && isUserCreator && <p className="text-sm text-center text-neutral-400">Waiting for the partner to submit their work.</p>}
-          {pact.status === 'pending_confirmation' && isUserPartner && pact.submission && <p className="text-sm text-center text-neutral-400">Work submitted ({pact.submission.fileName}). Waiting for the creator's approval.</p>}
-
-        </div>
-
-        {localError && <p className="text-xs text-red-500 mt-2 text-center">Error: {localError}</p>}
+        {isStaked && ( <div className="flex items-center font-semibold text-purple-400 text-sm"><Zap className="h-4 w-4 mr-1.5" /> {pact.stakeAmount} ETH Stake</div> )}
       </div>
-    </div>
+
+      {pact.description && <p className="text-neutral-300 mb-4">{pact.description}</p>}
+
+      {isPendingInvitation && (
+        <div className="mt-4 pt-4 border-t border-slate-700">
+            <p className="text-sm text-center text-blue-300 mb-4">You have been invited to join this pact.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="bg-red-900/50 border-red-700 text-red-300 hover:bg-red-900 hover:text-red-200" disabled={isLoading}><X className="mr-2 h-4 w-4" /> Reject</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-slate-900 border-slate-700 text-white">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center"><AlertTriangle className="text-yellow-400 mr-2" />Confirm Rejection</AlertDialogTitle>
+                    <AlertDialogDescription className="text-neutral-400">Are you sure you want to reject this pact invitation? This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRejectPact} className="bg-red-600 hover:bg-red-700">Confirm Rejection</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Button className="bg-blue-500 hover:bg-blue-600" disabled={isLoading} onClick={handleAcceptPact}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isWriting ? "Confirm in wallet..." : isConfirming ? "Accepting on-chain..." : isDbPending ? "Finalizing..." : <><Check className="mr-2 h-4 w-4" /> Accept</>}
+              </Button>
+            </div>
+            {localError && <p className="text-xs text-red-500 mt-2 text-center">Error: {localError}</p>}
+        </div>
+      )}
+    </motion.div>
   );
 }
