@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { LogOut, AlertTriangle } from 'lucide-react';
 import { sepolia } from 'wagmi/chains';
 import { useTransition, useEffect } from 'react';
+import { linkWeb3WalletAction } from '@/app/dashboard/pacts/actions/link-wallet';
 
 export function ConnectWalletButton() {
     const { user, isLoaded } = useUser();
