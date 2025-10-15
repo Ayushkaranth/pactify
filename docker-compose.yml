@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Service 1: Our Next.js Application
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # --- THIS IS THE DEFINITIVE FIX ---
+      # We are now passing ALL necessary environment variables to the container.
+      - NEXT_PUBLIC_CLERK_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+      - NEXT_PUBLIC_CLERK_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      
+      # IMPORTANT: This URI is intentionally overridden to point to our local Docker database.
+      # This is the correct pattern for Docker Compose.
+      - MONGODB_URI=mongodb://mongo:27017/pactify 
+      
+      # All your other keys are now correctly included.
+      - BACKEND_WALLET_PRIVATE_KEY=${BACKEND_WALLET_PRIVATE_KEY}
+      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL}
+      - NEXT_PUBLIC_GOAL_STAKE_CONTRACT_ADDRESS=${NEXT_PUBLIC_GOAL_STAKE_CONTRACT_ADDRESS}
+      # Add your Pacts contract address here as well
+      # - NEXT_PUBLIC_PACTS_CONTRACT_ADDRESS=${NEXT_PUBLIC_PACTS_CONTRACT_ADDRESS} 
+    depends_on:
+      - mongo
+
+  # Service 2: The MongoDB Database
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
